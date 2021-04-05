@@ -1800,6 +1800,14 @@ namespace Jint.Tests.Runtime
             Assert.ThrowsAny<NotSupportedException>(() => engine.Invoke("throwException2"));
         }
 
+        private class FailingConstructor
+        {
+            public FailingConstructor()
+            {
+                throw new Exception("myExceptionMessage");
+            }
+        }
+
         [Fact]
         public void ShouldCatchAllClrExceptions()
         {
@@ -1807,6 +1815,7 @@ namespace Jint.Tests.Runtime
 
             var engine = new Engine(o => o.CatchClrExceptions())
                 .SetValue("throwMyException", new Action(() => { throw new Exception(exceptionMessage); }))
+                .SetValue("FailingConstructor", typeof(FailingConstructor))
                 .SetValue("Thrower", typeof(Thrower))
                 .Execute(@"
                     function throwException1(){
@@ -1828,10 +1837,20 @@ namespace Jint.Tests.Runtime
                             return e.message;
                         }
                     }
+
+                    function throwException3(){
+                        try {
+                            new FailingConstructor();
+                        }
+                        catch(e) {
+                            return e.message;
+                        }
+                    }
                 ");
 
-            Assert.Equal(engine.Invoke("throwException1").AsString(), exceptionMessage);
-            Assert.Equal(engine.Invoke("throwException2").AsString(), exceptionMessage);
+            Assert.Equal(exceptionMessage, engine.Invoke("throwException1").AsString());
+            Assert.Equal(exceptionMessage, engine.Invoke("throwException2").AsString());
+            Assert.Equal(exceptionMessage, engine.Invoke("throwException3").AsString());
         }
 
         class MemberExceptionTest
