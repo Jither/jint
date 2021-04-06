@@ -30,7 +30,7 @@ namespace Jint.Tests.Runtime.Debugger
         }
 
         [Fact]
-        public void GlobalScopeIncludesGlobalConst()
+        public void ScriptScopeIncludesGlobalConst()
         {
             string script = @"
                 const globalConstant = 'test';
@@ -39,13 +39,13 @@ namespace Jint.Tests.Runtime.Debugger
 
             TestHelpers.TestAtBreak(script, info =>
             {
-                var value = AssertOnlyScopeContains(info.CurrentScopeChain, "globalConstant", DebugScopeType.Global);
+                var value = AssertOnlyScopeContains(info.CurrentScopeChain, "globalConstant", DebugScopeType.Script);
                 Assert.Equal("test", value.AsString());
             });
         }
 
         [Fact]
-        public void GlobalScopeIncludesGlobalLet()
+        public void ScriptScopeIncludesGlobalLet()
         {
             string script = @"
                 let globalLet = 'test';
@@ -53,7 +53,7 @@ namespace Jint.Tests.Runtime.Debugger
 
             TestHelpers.TestAtBreak(script, info =>
             {
-                var value = AssertOnlyScopeContains(info.CurrentScopeChain, "globalLet", DebugScopeType.Global);
+                var value = AssertOnlyScopeContains(info.CurrentScopeChain, "globalLet", DebugScopeType.Script);
                 Assert.Equal("test", value.AsString());
             });
         }
@@ -238,7 +238,8 @@ namespace Jint.Tests.Runtime.Debugger
             {
                 Assert.Collection(info.CurrentScopeChain,
                     scope => AssertScope(scope, DebugScopeType.Local, "arguments", "a", "b"),
-                    scope => AssertScope(scope, DebugScopeType.Global, "x", "y", "z", "add"));
+                    scope => AssertScope(scope, DebugScopeType.Script, "x", "y", "z"),
+                    scope => AssertScope(scope, DebugScopeType.Global, "add"));
             });
         }
 
@@ -264,7 +265,8 @@ namespace Jint.Tests.Runtime.Debugger
                 Assert.Collection(info.CurrentScopeChain,
                     scope => AssertScope(scope, DebugScopeType.Local, "arguments", "a"),
                     scope => AssertScope(scope, DebugScopeType.Closure, "b", "power"), // a, this, arguments shadowed by local
-                    scope => AssertScope(scope, DebugScopeType.Global, "x", "y", "z", "add"));
+                    scope => AssertScope(scope, DebugScopeType.Script, "x", "y", "z"),
+                    scope => AssertScope(scope, DebugScopeType.Global, "add"));
             });
         }
 
@@ -290,7 +292,8 @@ namespace Jint.Tests.Runtime.Debugger
                 Assert.Collection(info.CurrentScopeChain,
                     scope => AssertScope(scope, DebugScopeType.Block, "y"),
                     scope => AssertScope(scope, DebugScopeType.Local, "arguments", "a", "b"),
-                    scope => AssertScope(scope, DebugScopeType.Global, "x", "z", "add")); // y shadowed
+                    scope => AssertScope(scope, DebugScopeType.Script, "x", "z"), // y shadowed
+                    scope => AssertScope(scope, DebugScopeType.Global, "add"));
             });
         }
 
@@ -321,7 +324,8 @@ namespace Jint.Tests.Runtime.Debugger
                     scope => AssertScope(scope, DebugScopeType.Block, "x"),
                     scope => AssertScope(scope, DebugScopeType.Block, "y"),
                     scope => AssertScope(scope, DebugScopeType.Local, "arguments", "a", "b"),
-                    scope => AssertScope(scope, DebugScopeType.Global, "z", "add")); // x, y shadowed
+                    scope => AssertScope(scope, DebugScopeType.Script, "z"), // x, y shadowed
+                    scope => AssertScope(scope, DebugScopeType.Global, "add"));
             });
         }
 
@@ -369,7 +373,8 @@ namespace Jint.Tests.Runtime.Debugger
                 Assert.Collection(info.CurrentScopeChain,
                     scope => AssertScope(scope, DebugScopeType.Block, "x"),
                     scope => AssertScope(scope, DebugScopeType.With, "a", "b"),
-                    scope => AssertScope(scope, DebugScopeType.Global, "obj"));
+                    scope => AssertScope(scope, DebugScopeType.Script, "obj"),
+                    scope => AssertScope(scope, DebugScopeType.Global));
             });
         }
 
@@ -393,7 +398,8 @@ namespace Jint.Tests.Runtime.Debugger
                 Assert.Collection(info.CurrentScopeChain,
                     scope => AssertScope(scope, DebugScopeType.Block, "z"),
                     scope => AssertScope(scope, DebugScopeType.Block, "y"),
-                    scope => AssertScope(scope, DebugScopeType.Global, "x"));
+                    scope => AssertScope(scope, DebugScopeType.Script, "x"),
+                    scope => AssertScope(scope, DebugScopeType.Global));
             });
         }
 
@@ -415,7 +421,8 @@ namespace Jint.Tests.Runtime.Debugger
             {
                 Assert.Collection(info.CurrentScopeChain,
                     scope => AssertScope(scope, DebugScopeType.Block, "z"),
-                    scope => AssertScope(scope, DebugScopeType.Global, "x"));
+                    scope => AssertScope(scope, DebugScopeType.Script, "x"),
+                    scope => AssertScope(scope, DebugScopeType.Global));
             });
         }
 
@@ -442,16 +449,19 @@ namespace Jint.Tests.Runtime.Debugger
                     frame => Assert.Collection(frame.ScopeChain,
                         // in foo()
                         scope => AssertScope(scope, DebugScopeType.Local, "arguments", "a", "c"),
-                        scope => AssertScope(scope, DebugScopeType.Global, "x", "foo", "bar")
+                        scope => AssertScope(scope, DebugScopeType.Script, "x"),
+                        scope => AssertScope(scope, DebugScopeType.Global, "foo", "bar")
                     ),
                     frame => Assert.Collection(frame.ScopeChain,
                         // in bar()
                         scope => AssertScope(scope, DebugScopeType.Local, "arguments", "b"),
-                        scope => AssertScope(scope, DebugScopeType.Global, "x", "foo", "bar")
+                        scope => AssertScope(scope, DebugScopeType.Script, "x"),
+                        scope => AssertScope(scope, DebugScopeType.Global, "foo", "bar")
                     ),
                     frame => Assert.Collection(frame.ScopeChain,
                         // in global
-                        scope => AssertScope(scope, DebugScopeType.Global, "x", "foo", "bar")
+                        scope => AssertScope(scope, DebugScopeType.Script, "x"),
+                        scope => AssertScope(scope, DebugScopeType.Global, "foo", "bar")
                     )
                 );
             });
