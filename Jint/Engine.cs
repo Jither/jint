@@ -241,6 +241,8 @@ namespace Jint
 
         internal Options Options { [MethodImpl(MethodImplOptions.AggressiveInlining)] get; private set; }
 
+        public event EventHandler<SourceParsedEventArgs> Parsed;
+
         public DebugHandler DebugHandler => _debugHandler ??= new DebugHandler(this);
 
         public ExecutionContext EnterExecutionContext(
@@ -328,7 +330,10 @@ namespace Jint
         public Engine Execute(string source, ParserOptions parserOptions)
         {
             var parser = new JavaScriptParser(source, parserOptions);
-            return Execute(parser.ParseScript());
+            var script = parser.ParseScript();
+            Parsed?.Invoke(this, new SourceParsedEventArgs(source, script));
+
+            return Execute(script);
         }
 
         public Engine Execute(Script script)
