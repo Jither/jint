@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace Jint.Runtime.Debugger
 {
-    public class BreakLocation : IEquatable<BreakLocation>
+    public sealed class BreakLocation : IEquatable<BreakLocation>
     {
         public BreakLocation(string source, int line, int column)
         {
@@ -33,7 +35,7 @@ namespace Jint.Runtime.Debugger
 
             return other.Line == Line &&
                 other.Column == Column &&
-                (other.Source == null || Source == null || other.Source == Source);
+                other.Source == Source;
         }
 
         public override bool Equals(object obj)
@@ -48,7 +50,7 @@ namespace Jint.Runtime.Debugger
                 int hash = 17;
                 hash = hash * 33 + Line.GetHashCode();
                 hash = hash * 33 + Column.GetHashCode();
-                // We don't include Source - null source matches any source
+                hash = hash * 33 + Source.GetHashCode();
                 return hash;
             }
         }
@@ -61,6 +63,50 @@ namespace Jint.Runtime.Debugger
         public static bool operator !=(BreakLocation a, BreakLocation b)
         {
             return !Equals(a, b);
+        }
+    }
+
+    /// <summary>
+    /// Equality comparer for BreakLocation matching null Source to any other Source.
+    /// </summary>
+    /// <remarks>
+    /// Equals returns true if all properties are equal - or if Source is null on either BreakLocation.
+    /// GetHashCode excludes Source.
+    /// </remarks>
+    public sealed class OptionalSourceBreakLocationEqualityComparer : IEqualityComparer<BreakLocation>
+    {
+        public bool Equals(BreakLocation x, BreakLocation y)
+        {
+            if (Object.ReferenceEquals(x, y))
+            {
+                return true;
+            }
+
+            if (x is null || y is null)
+            {
+                return false;
+            }
+
+            return
+                x.Line == y.Line &&
+                x.Column == y.Column &&
+                (x.Source == null || y.Source == null || x.Source == y.Source);
+        }
+
+        public int GetHashCode(BreakLocation obj)
+        {
+            if (obj == null)
+            {
+                return 0;
+            }
+            unchecked
+            {
+                int hash = 17;
+                hash = hash * 33 + obj.Line.GetHashCode();
+                hash = hash * 33 + obj.Column.GetHashCode();
+                // Don't include Source
+                return hash;
+            }
         }
     }
 }

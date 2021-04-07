@@ -16,19 +16,41 @@ namespace Jint.Tests.Runtime.Debugger
 
             Assert.Equal(loc1, loc2);
             Assert.True(loc1 == loc2);
-            Assert.False(loc2 == loc3);
             Assert.True(loc2 != loc3);
             Assert.False(loc1 != loc2);
+            Assert.False(loc2 == loc3);
         }
 
         [Fact]
-        public void BreakLocationsWithNullSourceMatchAllSources()
+        public void BreakLocationsWithSourceCompareEqualityByValue()
         {
-            var loc1 = new BreakLocation(42, 23);
+            var loc1 = new BreakLocation("script1", 42, 23);
             var loc2 = new BreakLocation("script1", 42, 23);
+            var loc3 = new BreakLocation("script2", 42, 23);
 
             Assert.Equal(loc1, loc2);
             Assert.True(loc1 == loc2);
+            Assert.True(loc2 != loc3);
+            Assert.False(loc1 != loc2);
+            Assert.False(loc2 == loc3);
+        }
+
+        [Fact]
+        public void BreakLocationsOptionalSourceEqualityComparer()
+        {
+            var script1 = new BreakLocation("script1", 42, 23);
+            var script2 = new BreakLocation("script2", 42, 23);
+            var script2b = new BreakLocation("script2", 44, 23);
+            var any = new BreakLocation(null, 42, 23);
+
+            var comparer = new OptionalSourceBreakLocationEqualityComparer();
+            Assert.True(comparer.Equals(script1, any));
+            Assert.True(comparer.Equals(script2, any));
+            Assert.False(comparer.Equals(script1, script2));
+            Assert.False(comparer.Equals(script2, script2b));
+            Assert.Equal(comparer.GetHashCode(script1), comparer.GetHashCode(any));
+            Assert.Equal(comparer.GetHashCode(script1), comparer.GetHashCode(script2));
+            Assert.NotEqual(comparer.GetHashCode(script2), comparer.GetHashCode(script2b));
         }
 
         [Fact]

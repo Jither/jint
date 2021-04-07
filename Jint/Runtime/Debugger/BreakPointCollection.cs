@@ -14,7 +14,7 @@ namespace Jint.Runtime.Debugger
     /// </remarks>
     public class BreakPointCollection : IEnumerable<BreakPoint>
     {
-        private readonly Dictionary<BreakLocation, BreakPoint> _breakPoints = new Dictionary<BreakLocation, BreakPoint>();
+        private readonly Dictionary<BreakLocation, BreakPoint> _breakPoints = new Dictionary<BreakLocation, BreakPoint>(new OptionalSourceBreakLocationEqualityComparer());
 
         public BreakPointCollection()
         {
