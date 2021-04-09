@@ -829,7 +829,7 @@ namespace Jint
                     ExceptionHelper.ThrowSyntaxError(this, $"Identifier '{fn}' has already been declared");
                 }
                 
-                var fo = Function.CreateFunctionObject(f, env);
+                var fo = Function.InstantiateFunctionObject(f, env);
                 envRec.CreateGlobalFunctionBinding(fn, fo, canBeDeleted: false);
             }
 
@@ -971,7 +971,7 @@ namespace Jint
             foreach (var f in functionsToInitialize)
             {
                 var fn = f.Id.Name;
-                var fo = Function.CreateFunctionObject(f, lexEnv);
+                var fo = Function.InstantiateFunctionObject(f, lexEnv);
                 varEnvRec.SetMutableBinding(fn, fo, strict: false);
             }
         }
@@ -1142,7 +1142,7 @@ namespace Jint
             foreach (var f in functionsToInitialize)
             {
                 var fn = f.Id.Name;
-                var fo = Function.CreateFunctionObject(f, lexEnv);
+                var fo = Function.InstantiateFunctionObject(f, lexEnv);
                 if (varEnvRec is GlobalEnvironmentRecord ger)
                 {
                     ger.CreateGlobalFunctionBinding(fn, fo, canBeDeleted: true);

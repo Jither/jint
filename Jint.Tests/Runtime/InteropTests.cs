@@ -43,6 +43,66 @@ namespace Jint.Tests.Runtime
         {
             _engine.Execute(source);
         }
+        
+        public class Foo
+        {
+            public static Bar GetBar() => new Bar();
+        }
+
+        public class Bar
+        {
+            public string Test { get; set; } = "123";
+        }
+
+        [Fact]
+        public void ShouldStringifyNetObjects()
+        {
+            _engine.SetValue("foo", new Foo());
+            var json = _engine.Execute("JSON.stringify(foo.GetBar())").GetCompletionValue().AsString();
+            Assert.Equal("{\"Test\":\"123\"}", json);
+        }
+
+        [Fact]
+        public void EngineShouldStringifyAnExpandoObjectCorrectly()
+        {
+            var engine = new Engine();
+
+            dynamic expando = new ExpandoObject();
+            expando.foo = 5;
+            expando.bar = "A string";
+            engine.SetValue(nameof(expando), expando);
+
+            var result = engine.Execute($"JSON.stringify({nameof(expando)})").GetCompletionValue().AsString();
+            Assert.Equal("{\"foo\":5,\"bar\":\"A string\"}", result);
+        }
+
+        [Fact]
+        public void EngineShouldStringifyADictionaryOfStringAndObjectCorrectly()
+        {
+            var engine = new Engine();
+
+            var dictionary = new Dictionary<string,object> {
+                { "foo", 5 },
+                { "bar", "A string"},
+            };
+            engine.SetValue(nameof(dictionary), dictionary);
+
+            var result = engine.Execute($"JSON.stringify({nameof(dictionary)})").GetCompletionValue().AsString();
+            Assert.Equal("{\"foo\":5,\"bar\":\"A string\"}", result);
+        }
+
+        [Fact]
+        public void EngineShouldRoundtripParsedJSONBackToStringCorrectly()
+        {
+            var engine = new Engine();
+
+            const string json = "{\"foo\":5,\"bar\":\"A string\"}";
+            var parsed = engine.Execute($"JSON.parse('{json}')").GetCompletionValue().ToObject();
+            engine.SetValue(nameof(parsed), parsed);
+            
+            var result = engine.Execute($"JSON.stringify({nameof(parsed)})").GetCompletionValue().AsString();
+            Assert.Equal(json, result);
+        }
 
         [Fact]
         public void PrimitiveTypesCanBeSet()
@@ -1839,7 +1899,7 @@ namespace Jint.Tests.Runtime
             public MemberExceptionTest(bool throwOnCreate)
             {
                 if (throwOnCreate)
-                    throw new InvalidOperationException();
+                    throw new InvalidOperationException("thrown as requested");
             }
 
             public JsValue ThrowingProperty1
@@ -2344,12 +2404,17 @@ namespace Jint.Tests.Runtime
             Assert.Equal("a", engine.Execute("test.a").GetCompletionValue().AsString());
             Assert.Equal("b", engine.Execute("test.b").GetCompletionValue().AsString());
 
-            engine.Execute("test.a = 5; test.b = 10;");
+            engine.Execute("test.a = 5; test.b = 10; test.Name = 'Jint'");
 
             Assert.Equal(5, engine.Execute("test.a").GetCompletionValue().AsNumber());
             Assert.Equal(10, engine.Execute("test.b").GetCompletionValue().AsNumber());
+
+            Assert.Equal("Jint", engine.Execute("test.Name").GetCompletionValue().AsString());
+            Assert.True(engine.Execute("test.ContainsKey('a')").GetCompletionValue().AsBoolean());
+            Assert.True(engine.Execute("test.ContainsKey('b')").GetCompletionValue().AsBoolean());
+            Assert.False(engine.Execute("test.ContainsKey('c')").GetCompletionValue().AsBoolean());
         }
-        
+
         private class DynamicClass : DynamicObject
         {
             private readonly Dictionary<string, object> _properties = new Dictionary<string, object>();
@@ -2369,6 +2434,12 @@ namespace Jint.Tests.Runtime
                 _properties[binder.Name] = value;
                 return true;
             }
+
+            public string Name { get; set; }
+            public bool ContainsKey(string key)
+            {
+                return _properties.ContainsKey(key);
+            }
         }
             
         [Fact]
@@ -2387,8 +2458,6 @@ namespace Jint.Tests.Runtime
             engine.SetValue("E", TypeReference.CreateTypeReference(engine, typeof(UintEnum)));
             Assert.Equal(1, engine.Execute("E.b;").GetCompletionValue().AsNumber());
         }
-
-        #region DelegateCanReturnValue
 
         public class TestItem
         {
@@ -2450,6 +2519,12 @@ namespace Jint.Tests.Runtime
             Assert.Equal(30, engine.Execute("lst.Where(x => x.Name == 'b').Sum(x => x.Age);").GetCompletionValue().AsNumber());
         }
 
-        #endregion
+        [Fact]
+        public void ExceptionFromConstructorShouldPropagate()
+        {
+            _engine.SetValue("Class", TypeReference.CreateTypeReference(_engine, typeof(MemberExceptionTest)));
+            var ex = Assert.Throws<InvalidOperationException>(() => _engine.Execute("new Class(true);"));
+            Assert.Equal("thrown as requested", ex.Message);
+        }
     }
 }

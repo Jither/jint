@@ -147,7 +147,16 @@ namespace Jint.Runtime.Interop
             var processed = basePropertyKeys.Count > 0 ? new HashSet<JsValue>() : null;
 
             var includeStrings = (types & Types.String) != 0;
-            if (Target is IDictionary dictionary && includeStrings)
+            if (includeStrings && Target is IDictionary<string, object> stringKeyedDictionary) // expando object for instance
+            {
+                foreach (var key in stringKeyedDictionary.Keys)
+                {
+                    var jsString = JsString.Create(key);
+                    processed?.Add(jsString);
+                    yield return jsString;
+                }
+            }
+            else if (includeStrings && Target is IDictionary dictionary)
             {
                 // we take values exposed as dictionary keys only 
                 foreach (var key in dictionary.Keys)
@@ -266,11 +275,6 @@ namespace Jint.Runtime.Interop
 
         private static ReflectionAccessor ResolvePropertyDescriptorFactory(Engine engine, Type type, string memberName)
         {
-            if (typeof(DynamicObject).IsAssignableFrom(type))
-            {
-                return new DynamicObjectAccessor(typeof(void), memberName);
-            }
-            
             var isNumber = uint.TryParse(memberName, out _);
 
             // we can always check indexer if there's one, and then fall back to properties if indexer returns null
@@ -280,6 +284,11 @@ namespace Jint.Runtime.Interop
             if (!isNumber && TryFindStringPropertyAccessor(type, memberName, indexer, out var temp))
             {
                 return temp;
+            }
+
+            if (typeof(DynamicObject).IsAssignableFrom(type))
+            {
+                return new DynamicObjectAccessor(type, memberName);
             }
 
             // if no methods are found check if target implemented indexing
