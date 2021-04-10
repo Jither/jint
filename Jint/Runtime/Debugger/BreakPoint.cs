@@ -3,7 +3,7 @@
 namespace Jint.Runtime.Debugger
 {
     // BreakPoint is not sealed. It's useful to be able to add additional properties on a derived BreakPoint class (e.g. a breakpoint ID
-    // or breakpoint type) but still be able to add it to Jint's breakpoint collection.
+    // or breakpoint type) but still let it be managed by Jint's breakpoint collection.
     public class BreakPoint
     {
         public BreakPoint(string source, int line, int column)
